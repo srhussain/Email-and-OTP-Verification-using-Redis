@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .helpers import *
 from django.contrib.auth import authenticate,login,logout
+from rest_framework_simplejwt.tokens import RefreshToken
 from .thready import *
 
 
@@ -15,31 +16,64 @@ class Login(APIView):
     def post(self,request):
         try:
             data=request.data
-            email=data.get('email')
-            password=data.get('password')
-            if not email or not password:
-                 return Response({
-                'status':404,
-                'error':'Both username and password required'
-                })
-            user_obj=User.objects.filter(email=email).first()
-            if user_obj is None:
-                 return Response({
-                'status':404,
-                'error':'User Not Found 1'
-                })
-            user = authenticate(email=email, password=password)
-            if user is None:
-                 return Response({
-                'status':404,
-                'error':'Your Password is wrong !'
+            serializer=LoginSerializer(data=data)
+            # email=data.get('email')
+            # password=data.get('password')
+            if serializer.is_valid():
+                email=serializer.data['email']
+                password=serializer.data['password']
+                user = authenticate(email=email, password=password)
+                if user is None:
+                    return Response({
+                        'status':404,
+                        'message':'Invalid Password',
+                        'data':{}
+                    })
+
+                if user.is_email_verified is False:
+                    return Response({
+                        'status':404,
+                        'message':'Your account is not Verified ',
+                        'data':{}
+                    })
+
+
+                refresh=RefreshToken.for_user(user)
+                return Response({
+                    'refresh':str(refresh),
+                    'access':str(refresh.access_token)
+
                 })
 
-            login(request,user)
+
             return Response({
-                'status':200,
-                'Message':'User Logged In Successfully !'
-                })
+                'status':404,
+                'message':'something went wrong',
+                'data':serializer.errors
+            })
+
+            # if not email or not password:
+            #      return Response({
+            #     'status':404,
+            #     'error':'Both username and password required'
+            #     })
+            # user_obj=User.objects.filter(email=email).first()
+            # if user_obj is None:
+            #      return Response({
+            #     'status':404,
+            #     'error':'User Not Found 1'
+            #     })
+            # if user is None:
+            #      return Response({
+            #     'status':404,
+            #     'error':'Your Password is wrong !'
+            #     })
+
+            # login(request,user)
+            # return Response({
+            #     'status':200,
+            #     'Message':'User Logged In Successfully !'
+            #     })
 
 
         except Exception as e:
